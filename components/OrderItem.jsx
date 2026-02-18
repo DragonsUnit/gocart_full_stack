@@ -1,10 +1,57 @@
 'use client'
 import Image from "next/image";
-import { DotIcon } from "lucide-react";
 import { useSelector } from "react-redux";
 import Rating from "./Rating";
 import { useState } from "react";
 import RatingModal from "./RatingModal";
+import { CheckCircleIcon, CircleIcon, PackageIcon, TruckIcon, ShoppingBagIcon } from "lucide-react";
+
+const ORDER_STEPS = [
+    { key: 'ORDER_PLACED', label: 'Order Placed', icon: ShoppingBagIcon },
+    { key: 'PROCESSING', label: 'Processing', icon: PackageIcon },
+    { key: 'SHIPPED', label: 'Shipped', icon: TruckIcon },
+    { key: 'DELIVERED', label: 'Delivered', icon: CheckCircleIcon },
+]
+
+const STATUS_COLORS = {
+    ORDER_PLACED: 'text-blue-500 bg-blue-100',
+    PROCESSING: 'text-yellow-600 bg-yellow-100',
+    SHIPPED: 'text-purple-600 bg-purple-100',
+    DELIVERED: 'text-green-600 bg-green-100',
+}
+
+const OrderTimeline = ({ status }) => {
+    const currentIndex = ORDER_STEPS.findIndex(s => s.key === status)
+
+    return (
+        <div className="flex items-center gap-0 mt-3 mb-1">
+            {ORDER_STEPS.map((step, index) => {
+                const isDone = index <= currentIndex
+                const isCurrent = index === currentIndex
+                const Icon = step.icon
+
+                return (
+                    <div key={step.key} className="flex items-center">
+                        <div className="flex flex-col items-center">
+                            <div className={`size-7 rounded-full flex items-center justify-center transition-all ${isDone
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-slate-100 text-slate-300'
+                                } ${isCurrent ? 'ring-2 ring-green-300 ring-offset-1' : ''}`}>
+                                <Icon size={13} />
+                            </div>
+                            <span className={`text-[9px] mt-1 font-medium whitespace-nowrap ${isDone ? 'text-green-600' : 'text-slate-300'}`}>
+                                {step.label}
+                            </span>
+                        </div>
+                        {index < ORDER_STEPS.length - 1 && (
+                            <div className={`h-0.5 w-8 sm:w-12 mx-0.5 mb-3 transition-all ${index < currentIndex ? 'bg-green-400' : 'bg-slate-200'}`} />
+                        )}
+                    </div>
+                )
+            })}
+        </div>
+    )
+}
 
 const OrderItem = ({ order }) => {
 
@@ -54,19 +101,16 @@ const OrderItem = ({ order }) => {
                 </td>
 
                 <td className="text-left space-y-2 text-sm max-md:hidden">
-                    <div
-                        className={`flex items-center justify-center gap-1 rounded-full p-1 ${order.status === 'confirmed'
-                            ? 'text-yellow-500 bg-yellow-100'
-                            : order.status === 'delivered'
-                                ? 'text-green-500 bg-green-100'
-                                : 'text-slate-500 bg-slate-100'
-                            }`}
-                    >
-                        <DotIcon size={10} className="scale-250" />
-                        {order.status.split('_').join(' ').toLowerCase()}
+                    {/* Status Badge */}
+                    <div className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full ${STATUS_COLORS[order.status] || 'text-slate-500 bg-slate-100'}`}>
+                        <span className="size-1.5 rounded-full bg-current" />
+                        {order.status.split('_').join(' ')}
                     </div>
+                    {/* Timeline */}
+                    <OrderTimeline status={order.status} />
                 </td>
             </tr>
+
             {/* Mobile */}
             <tr className="md:hidden">
                 <td colSpan={5}>
@@ -74,10 +118,12 @@ const OrderItem = ({ order }) => {
                     <p>{order.address.city}, {order.address.state}, {order.address.zip}, {order.address.country}</p>
                     <p>{order.address.phone}</p>
                     <br />
-                    <div className="flex items-center">
-                        <span className='text-center mx-auto px-6 py-1.5 rounded bg-green-100 text-green-700' >
-                            {order.status.replace(/_/g, ' ').toLowerCase()}
+                    <div className="flex flex-col items-start gap-2">
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full ${STATUS_COLORS[order.status] || 'text-slate-500 bg-slate-100'}`}>
+                            <span className="size-1.5 rounded-full bg-current" />
+                            {order.status.replace(/_/g, ' ')}
                         </span>
+                        <OrderTimeline status={order.status} />
                     </div>
                 </td>
             </tr>
