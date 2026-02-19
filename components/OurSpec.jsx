@@ -1,6 +1,8 @@
+'use client'
 import React from 'react'
 import Title from './Title'
 import { ourSpecsData } from '@/assets/assets'
+import { motion } from 'framer-motion'
 
 const OurSpecs = () => {
 
@@ -12,18 +14,31 @@ const OurSpecs = () => {
                 {
                     ourSpecsData.map((spec, index) => {
                         return (
-                            <div className='relative h-44 px-8 flex flex-col items-center justify-center w-full text-center border rounded-lg group' style={{ backgroundColor: spec.accent + 10, borderColor: spec.accent + 30 }} key={index}>
-                                <h3 className='text-slate-800 font-medium'>{spec.title}</h3>
-                                <p className='text-sm text-slate-600 mt-3'>{spec.description}</p>
-                                <div className='absolute -top-5 text-white size-10 flex items-center justify-center rounded-md group-hover:scale-105 transition' style={{ backgroundColor: spec.accent }}>
+                            <motion.div
+                                key={index}
+                                initial={{ opacity: 0, y: 30 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true, margin: '-50px' }}
+                                transition={{ delay: index * 0.08, duration: 0.4 }}
+                                whileHover={{ y: -4, scale: 1.02 }}
+                                className='relative h-44 px-8 flex flex-col items-center justify-center w-full text-center border rounded-2xl group shadow-sm hover:shadow-lg transition-shadow'
+                                style={{ backgroundColor: spec.accent + '08', borderColor: spec.accent + '25' }}
+                            >
+                                <h3 className='text-slate-800 font-semibold'>{spec.title}</h3>
+                                <p className='text-sm text-slate-500 mt-3 leading-relaxed'>{spec.description}</p>
+                                <motion.div
+                                    whileHover={{ scale: 1.15, rotate: 5 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    className='absolute -top-5 text-white size-10 flex items-center justify-center rounded-xl shadow-lg group-hover:shadow-xl transition-shadow'
+                                    style={{ backgroundColor: spec.accent }}
+                                >
                                     <spec.icon size={20} />
-                                </div>
-                            </div>
+                                </motion.div>
+                            </motion.div>
                         )
                     })
                 }
             </div>
-
         </div>
     )
 }

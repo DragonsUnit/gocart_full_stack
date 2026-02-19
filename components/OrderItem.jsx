@@ -20,38 +20,7 @@ const STATUS_COLORS = {
     DELIVERED: 'text-green-600 bg-green-100',
 }
 
-const OrderTimeline = ({ status }) => {
-    const currentIndex = ORDER_STEPS.findIndex(s => s.key === status)
-
-    return (
-        <div className="flex items-center gap-0 mt-3 mb-1">
-            {ORDER_STEPS.map((step, index) => {
-                const isDone = index <= currentIndex
-                const isCurrent = index === currentIndex
-                const Icon = step.icon
-
-                return (
-                    <div key={step.key} className="flex items-center">
-                        <div className="flex flex-col items-center">
-                            <div className={`size-7 rounded-full flex items-center justify-center transition-all ${isDone
-                                    ? 'bg-green-500 text-white'
-                                    : 'bg-slate-100 text-slate-300'
-                                } ${isCurrent ? 'ring-2 ring-green-300 ring-offset-1' : ''}`}>
-                                <Icon size={13} />
-                            </div>
-                            <span className={`text-[9px] mt-1 font-medium whitespace-nowrap ${isDone ? 'text-green-600' : 'text-slate-300'}`}>
-                                {step.label}
-                            </span>
-                        </div>
-                        {index < ORDER_STEPS.length - 1 && (
-                            <div className={`h-0.5 w-8 sm:w-12 mx-0.5 mb-3 transition-all ${index < currentIndex ? 'bg-green-400' : 'bg-slate-200'}`} />
-                        )}
-                    </div>
-                )
-            })}
-        </div>
-    )
-}
+import OrderProgressStepper from "./OrderProgressStepper";
 
 const OrderItem = ({ order }) => {
 
@@ -107,7 +76,9 @@ const OrderItem = ({ order }) => {
                         {order.status.split('_').join(' ')}
                     </div>
                     {/* Timeline */}
-                    <OrderTimeline status={order.status} />
+                    <div className="pt-2">
+                        <OrderProgressStepper status={order.status} />
+                    </div>
                 </td>
             </tr>
 
@@ -123,7 +94,7 @@ const OrderItem = ({ order }) => {
                             <span className="size-1.5 rounded-full bg-current" />
                             {order.status.replace(/_/g, ' ')}
                         </span>
-                        <OrderTimeline status={order.status} />
+                        <OrderProgressStepper status={order.status} />
                     </div>
                 </td>
             </tr>

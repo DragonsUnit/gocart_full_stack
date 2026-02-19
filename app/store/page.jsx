@@ -17,6 +17,7 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell
 } from "recharts"
+import { motion } from "framer-motion"
 
 // ─── Mock chart data (replace with real API data as needed) ───────────────────
 const revenueData = [
@@ -55,11 +56,16 @@ const STATUS_MAP = {
 const KpiCard = ({ title, value, icon: Icon, change, changeLabel, accent }) => {
     const isPositive = change >= 0
     return (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col gap-3 hover:shadow-md transition-shadow">
+        <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ y: -5, shadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)" }}
+            className="bg-white/60 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-white/60 flex flex-col gap-3 transition-all duration-300"
+        >
             <div className="flex items-center justify-between">
                 <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{title}</p>
-                <div className={`p-2 rounded-xl ${accent}`}>
-                    <Icon size={16} className="text-white" />
+                <div className={`p-2 rounded-xl text-white shadow-lg ${accent}`}>
+                    <Icon size={16} />
                 </div>
             </div>
             <p className="text-2xl font-bold text-slate-800">{value}</p>
@@ -73,7 +79,7 @@ const KpiCard = ({ title, value, icon: Icon, change, changeLabel, accent }) => {
                 </span>
                 <span className="text-slate-400">{changeLabel}</span>
             </div>
-        </div>
+        </motion.div>
     )
 }
 
@@ -100,22 +106,30 @@ export default function Dashboard() {
 
     const [loading, setLoading] = useState(true)
     const [dashboardData, setDashboardData] = useState({
-        totalProducts: 0,
-        totalEarnings: 0,
         totalOrders: 0,
         ratings: [],
+        revenueData: [],
+        categoryData: [],
+        topProducts: []
+    })
+    const [inventorySummary, setInventorySummary] = useState({
+        critical: [],
+        low: [],
+        healthy: []
     })
     const [recentOrders, setRecentOrders] = useState([])
 
     const fetchDashboardData = async () => {
         try {
             const token = await getToken()
-            const [dashRes, ordersRes] = await Promise.all([
+            const [dashRes, ordersRes, invRes] = await Promise.all([
                 axios.get('/api/store/dashboard', { headers: { Authorization: `Bearer ${token}` } }),
                 axios.get('/api/store/orders', { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get('/api/store/inventory/health', { headers: { Authorization: `Bearer ${token}` } }),
             ])
             setDashboardData(dashRes.data.dashboardData)
             setRecentOrders((ordersRes.data.orders || []).slice(0, 5))
+            setInventorySummary(invRes.data.inventorySummary)
         } catch (error) {
             toast.error(error?.response?.data?.error || error.message)
         }
@@ -174,18 +188,40 @@ export default function Dashboard() {
             </div>
 
             {/* ── KPI Cards ── */}
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-                {kpiCards.map((card, i) => <KpiCard key={i} {...card} />)}
-            </div>
+            <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={{
+                    visible: { transition: { staggerChildren: 0.1 } }
+                }}
+                className="grid grid-cols-2 xl:grid-cols-4 gap-4"
+            >
+                {kpiCards.map((card, i) => (
+                    <motion.div
+                        key={i}
+                        variants={{
+                            hidden: { opacity: 0, y: 20 },
+                            visible: { opacity: 1, y: 0 }
+                        }}
+                    >
+                        <KpiCard {...card} />
+                    </motion.div>
+                ))}
+            </motion.div>
 
             {/* ── Revenue Chart + Category Breakdown ── */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
                 {/* Revenue Area Chart */}
-                <div className="xl:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                    className="xl:col-span-2 bg-white/60 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-white/60"
+                >
                     <SectionHeader title="Revenue Analytics" subtitle="Last 7 days performance" action="See All" />
                     <ResponsiveContainer width="100%" height={200}>
-                        <AreaChart data={revenueData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                        <AreaChart data={dashboardData.revenueData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                             <defs>
                                 <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
@@ -211,130 +247,138 @@ export default function Dashboard() {
                         <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-orange-500 inline-block" />Revenue</span>
                         <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-blue-500 inline-block" />Orders</span>
                     </div>
-                </div>
+                </motion.div>
 
                 {/* Top Categories Donut */}
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="bg-white/60 backdrop-blur-md rounded-2xl p-5 shadow-sm border border-white/60"
+                >
                     <SectionHeader title="Top Categories" action="See All" />
                     <div className="flex justify-center">
                         <PieChart width={140} height={140}>
-                            <Pie data={categoryData} cx={65} cy={65} innerRadius={42} outerRadius={65} dataKey="value" paddingAngle={3}>
-                                {categoryData.map((entry, i) => (
+                            <Pie data={dashboardData.categoryData} cx={65} cy={65} innerRadius={42} outerRadius={65} dataKey="value" paddingAngle={3}>
+                                {dashboardData.categoryData.map((entry, i) => (
                                     <Cell key={i} fill={entry.color} />
                                 ))}
                             </Pie>
-                            <Tooltip formatter={(v) => `${v}%`} contentStyle={{ borderRadius: '10px', fontSize: 11 }} />
+                            <Tooltip formatter={(v) => `${v} products`} contentStyle={{ borderRadius: '10px', fontSize: 11 }} />
                         </PieChart>
                     </div>
                     <div className="space-y-2 mt-2">
-                        {categoryData.map((cat, i) => (
+                        {dashboardData.categoryData.map((cat, i) => (
                             <div key={i} className="flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-2">
                                     <span className="size-2 rounded-full inline-block" style={{ backgroundColor: cat.color }} />
                                     <span className="text-slate-600">{cat.name}</span>
                                 </div>
-                                <span className="font-semibold text-slate-700">{cat.value}%</span>
+                                <span className="font-semibold text-slate-700">{cat.value} items</span>
                             </div>
                         ))}
                     </div>
-                </div>
+                </motion.div>
             </div>
 
             {/* ── Conversion Funnel + Recent Orders ── */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
 
-                {/* Conversion Funnel */}
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-                    <SectionHeader title="Conversion Rate" subtitle="This week" />
+                {/* Inventory Intelligence */}
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100" >
+                    <SectionHeader title="Inventory Health" subtitle="Critical Stock Monitoring" />
                     <div className="space-y-3 mt-2">
-                        {conversionSteps.map((step, i) => {
-                            const pct = Math.round((step.value / conversionSteps[0].value) * 100)
-                            return (
-                                <div key={i}>
-                                    <div className="flex justify-between text-xs mb-1">
-                                        <span className="text-slate-500">{step.label}</span>
-                                        <span className="font-semibold text-slate-700">{step.value.toLocaleString()}</span>
-                                    </div>
-                                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full rounded-full transition-all duration-700"
-                                            style={{ width: `${pct}%`, backgroundColor: step.color }}
-                                        />
-                                    </div>
+                        {[
+                            { label: 'Critical (Out of Stock)', value: inventorySummary.critical.length, color: '#ef4444', pct: (inventorySummary.critical.length / dashboardData.totalProducts) * 100 || 0 },
+                            { label: 'Warning (Below 10)', value: inventorySummary.low.length, color: '#f59e0b', pct: (inventorySummary.low.length / dashboardData.totalProducts) * 100 || 0 },
+                            { label: 'Healthy (10+)', value: inventorySummary.healthy.length, color: '#10b981', pct: (inventorySummary.healthy.length / dashboardData.totalProducts) * 100 || 0 },
+                        ].map((step, i) => (
+                            <div key={i}>
+                                <div className="flex justify-between text-xs mb-1">
+                                    <span className="text-slate-500">{step.label}</span>
+                                    <span className="font-semibold text-slate-700">{step.value} Products</span>
                                 </div>
-                            )
-                        })}
+                                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${step.pct}%` }}
+                                        className="h-full rounded-full"
+                                        style={{ backgroundColor: step.color }}
+                                    />
+                                </div>
+                            </div>
+                        ))}
                     </div>
 
-                    {/* Weekly bar chart */}
-                    <div className="mt-5">
-                        <p className="text-xs text-slate-400 mb-2">Daily Orders (This Week)</p>
-                        <ResponsiveContainer width="100%" height={80}>
-                            <BarChart data={revenueData} barSize={10}>
-                                <Bar dataKey="orders" fill="#f97316" radius={[4, 4, 0, 0]} />
-                                <Tooltip contentStyle={{ borderRadius: '10px', fontSize: 11 }} formatter={(v) => [v, 'Orders']} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <div className="mt-5 p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Stock Suggestions</p>
+                        {inventorySummary.critical.length > 0 ? (
+                            <p className="text-xs text-red-600 font-medium">⚠️ {inventorySummary.critical.length} items are currently losing you sales!</p>
+                        ) : (
+                            <p className="text-xs text-emerald-600 font-medium">✅ All products are currently available.</p>
+                        )}
                     </div>
                 </div>
 
                 {/* Recent Orders */}
-                <div className="xl:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <div className="xl:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-slate-100" >
                     <SectionHeader title="Recent Orders" subtitle={`${recentOrders.length} latest orders`} action="View All" />
-                    {recentOrders.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-10 text-slate-300">
-                            <ShoppingBagIcon size={36} />
-                            <p className="text-sm mt-2">No orders yet</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
-                                <thead>
-                                    <tr className="text-slate-400 border-b border-slate-100">
-                                        {['#', 'Customer', 'Product', 'Total', 'Status', 'Date'].map(h => (
-                                            <th key={h} className="text-left pb-3 font-medium pr-3">{h}</th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {recentOrders.map((order, i) => {
-                                        const st = STATUS_MAP[order.status] || { label: order.status, color: 'bg-slate-100 text-slate-600' }
-                                        const firstItem = order.orderItems?.[0]
-                                        return (
-                                            <tr
-                                                key={order.id}
-                                                className="hover:bg-orange-50/40 transition-colors cursor-pointer"
-                                                onClick={() => router.push('/store/orders')}
-                                            >
-                                                <td className="py-3 pr-3 text-orange-500 font-semibold">#{String(i + 1).padStart(5, '0')}</td>
-                                                <td className="py-3 pr-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="size-6 rounded-full bg-gradient-to-br from-orange-400 to-pink-400 flex items-center justify-center text-white text-[9px] font-bold shrink-0">
-                                                            {order.user?.name?.[0] || '?'}
+                    {
+                        recentOrders.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-10 text-slate-300">
+                                <ShoppingBagIcon size={36} />
+                                <p className="text-sm mt-2">No orders yet</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                    <thead>
+                                        <tr className="text-slate-400 border-b border-slate-100">
+                                            {['#', 'Customer', 'Product', 'Total', 'Status', 'Date'].map(h => (
+                                                <th key={h} className="text-left pb-3 font-medium pr-3">{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {recentOrders.map((order, i) => {
+                                            const st = STATUS_MAP[order.status] || { label: order.status, color: 'bg-slate-100 text-slate-600' }
+                                            const firstItem = order.orderItems?.[0]
+                                            return (
+                                                <tr
+                                                    key={order.id}
+                                                    className="hover:bg-orange-50/40 transition-colors cursor-pointer"
+                                                    onClick={() => router.push('/store/orders')}
+                                                >
+                                                    <td className="py-3 pr-3 text-orange-500 font-semibold">#{String(i + 1).padStart(5, '0')}</td>
+                                                    <td className="py-3 pr-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="size-6 rounded-full bg-gradient-to-br from-orange-400 to-pink-400 flex items-center justify-center text-white text-[9px] font-bold shrink-0">
+                                                                {order.user?.name?.[0] || '?'}
+                                                            </div>
+                                                            <span className="text-slate-700 font-medium truncate max-w-[80px]">{order.user?.name || '—'}</span>
                                                         </div>
-                                                        <span className="text-slate-700 font-medium truncate max-w-[80px]">{order.user?.name || '—'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="py-3 pr-3">
-                                                    <div className="flex items-center gap-2">
-                                                        {firstItem?.product?.images?.[0] && (
-                                                            <Image src={firstItem.product.images[0]} alt="" width={28} height={28} className="rounded-lg object-contain bg-slate-50 size-7" />
-                                                        )}
-                                                        <span className="text-slate-600 truncate max-w-[90px]">{firstItem?.product?.name || '—'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="py-3 pr-3 font-semibold text-slate-800">{currency}{order.total}</td>
-                                                <td className="py-3 pr-3">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${st.color}`}>{st.label}</span>
-                                                </td>
-                                                <td className="py-3 text-slate-400">{new Date(order.createdAt).toLocaleDateString()}</td>
-                                            </tr>
-                                        )
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                                                    </td>
+                                                    <td className="py-3 pr-3">
+                                                        <div className="flex items-center gap-2">
+                                                            {firstItem?.product?.images?.[0] && (
+                                                                <Image src={firstItem.product.images[0]} alt="" width={28} height={28} className="rounded-lg object-contain bg-slate-50 size-7" />
+                                                            )}
+                                                            <span className="text-slate-600 truncate max-w-[90px]">{firstItem?.product?.name || '—'}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 pr-3 font-semibold text-slate-800">{currency}{order.total}</td>
+                                                    <td className="py-3 pr-3">
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${st.color}`}>{st.label}</span>
+                                                    </td>
+                                                    <td className="py-3 text-slate-400">{new Date(order.createdAt).toLocaleDateString()}</td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )
+                    }
                     <button
                         onClick={() => router.push('/store/orders')}
                         className="mt-4 w-full text-xs text-center text-orange-500 hover:text-orange-600 font-medium py-2 border border-orange-100 rounded-xl hover:bg-orange-50 transition"
@@ -342,13 +386,50 @@ export default function Dashboard() {
                         View All Orders →
                     </button>
                 </div>
-            </div>
+            </div >
 
             {/* ── Top Rated Products + Recent Reviews ── */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4" >
+
+                {/* Top Selling Products */}
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100" >
+                    <SectionHeader title="Top Selling Products" subtitle="Highest revenue items" />
+                    <div className="space-y-4 mt-2">
+                        {dashboardData.topProducts.length > 0 ? (
+                            dashboardData.topProducts.map((p, i) => (
+                                <div key={i} className="flex items-center justify-between group cursor-pointer">
+                                    <div className="flex items-center gap-3">
+                                        <div className="size-8 rounded-lg bg-slate-50 flex items-center justify-center text-xs font-bold text-slate-400 group-hover:text-orange-500 transition-colors">
+                                            #{i + 1}
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold text-slate-700 truncate max-w-[120px]">{p.name}</p>
+                                            <p className="text-[10px] text-slate-400">{p.sales} units sold</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs font-bold text-slate-800">{currency}{p.revenue.toLocaleString()}</p>
+                                        <div className="h-1 w-16 bg-slate-100 rounded-full mt-1 overflow-hidden">
+                                            <motion.div
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${(p.revenue / dashboardData.topProducts[0].revenue) * 100}%` }}
+                                                className="h-full bg-orange-400"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="py-10 text-center text-slate-300">
+                                <BarChart3Icon size={32} className="mx-auto mb-2 opacity-20" />
+                                <p className="text-xs">No sales data yet</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Quick Actions */}
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100" >
                     <SectionHeader title="Quick Actions" subtitle="Manage your travel store" />
                     <div className="grid grid-cols-2 gap-3">
                         {[
@@ -377,7 +458,7 @@ export default function Dashboard() {
                             <div>
                                 <p className="text-xs font-semibold text-orange-700">Travel Seller Tip 🌍</p>
                                 <p className="text-xs text-orange-600 mt-1 leading-relaxed">
-                                    Add destination tags to your products to help travelers find exactly what they need for their next adventure!
+                                    Use the "Top Products" list to identify your best-sellers and ensure they are always in stock!
                                 </p>
                             </div>
                         </div>
@@ -385,40 +466,42 @@ export default function Dashboard() {
                 </div>
 
                 {/* Recent Reviews */}
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100" >
                     <SectionHeader title="Recent Reviews" subtitle={`${dashboardData.ratings.length} total reviews`} action="See All" />
-                    {dashboardData.ratings.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-10 text-slate-300">
-                            <StarIcon size={36} />
-                            <p className="text-sm mt-2">No reviews yet</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-4 max-h-64 overflow-y-auto pr-1">
-                            {dashboardData.ratings.slice(0, 5).map((review, i) => (
-                                <div key={i} className="flex gap-3 pb-4 border-b border-slate-50 last:border-0">
-                                    <Image
-                                        src={review.user.image}
-                                        alt=""
-                                        width={36}
-                                        height={36}
-                                        className="size-9 rounded-full object-cover shrink-0"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <p className="text-xs font-semibold text-slate-700 truncate">{review.user.name}</p>
-                                            <div className="flex shrink-0">
-                                                {Array(5).fill('').map((_, idx) => (
-                                                    <StarIcon key={idx} size={10} className="text-transparent" fill={review.rating >= idx + 1 ? '#f97316' : '#e2e8f0'} />
-                                                ))}
+                    {
+                        dashboardData.ratings.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-10 text-slate-300">
+                                <StarIcon size={36} />
+                                <p className="text-sm mt-2">No reviews yet</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 max-h-64 overflow-y-auto pr-1">
+                                {dashboardData.ratings.slice(0, 5).map((review, i) => (
+                                    <div key={i} className="flex gap-3 pb-4 border-b border-slate-50 last:border-0">
+                                        <Image
+                                            src={review.user.image}
+                                            alt=""
+                                            width={36}
+                                            height={36}
+                                            className="size-9 rounded-full object-cover shrink-0"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className="text-xs font-semibold text-slate-700 truncate">{review.user.name}</p>
+                                                <div className="flex shrink-0">
+                                                    {Array(5).fill('').map((_, idx) => (
+                                                        <StarIcon key={idx} size={10} className="text-transparent" fill={review.rating >= idx + 1 ? '#f97316' : '#e2e8f0'} />
+                                                    ))}
+                                                </div>
                                             </div>
+                                            <p className="text-[10px] text-slate-400 mt-0.5">{review.product?.name}</p>
+                                            <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{review.review}</p>
                                         </div>
-                                        <p className="text-[10px] text-slate-400 mt-0.5">{review.product?.name}</p>
-                                        <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{review.review}</p>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                                ))}
+                            </div>
+                        )
+                    }
                 </div>
             </div>
         </div>

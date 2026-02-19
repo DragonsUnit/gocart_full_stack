@@ -1,18 +1,25 @@
 import prisma from "@/lib/prisma";
 import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { inngest } from "@/inngest/client";
 
 
 // Update user cart 
-export async function POST(request){
+export async function POST(request) {
     try {
         const { userId } = getAuth(request)
         const { cart } = await request.json()
 
         // Save the cart to the user object
         await prisma.user.update({
-            where: {id: userId},
-            data: {cart: cart}
+            where: { id: userId },
+            data: { cart: cart }
+        })
+
+        // Trigger Inngest event for abandoned cart recovery
+        await inngest.send({
+            name: 'app/cart.updated',
+            data: { userId, cart }
         })
 
         return NextResponse.json({ message: 'Cart updated' })
@@ -23,12 +30,12 @@ export async function POST(request){
 }
 
 // Get user cart 
-export async function GET(request){
+export async function GET(request) {
     try {
         const { userId } = getAuth(request)
-        
+
         const user = await prisma.user.findUnique({
-            where: {id: userId}
+            where: { id: userId }
         })
 
         return NextResponse.json({ cart: user.cart })

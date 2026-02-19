@@ -1,9 +1,11 @@
 'use client'
 import ProductDescription from "@/components/ProductDescription";
 import ProductDetails from "@/components/ProductDetails";
+import RecommendationCarousel from "@/components/RecommendationCarousel";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
+import axios from "axios";
 
 export default function Product() {
 
@@ -12,16 +14,20 @@ export default function Product() {
     const products = useSelector(state => state.product.list);
 
     const fetchProduct = async () => {
-        const product = products.find((product) => product.id === productId);
-        setProduct(product);
+        try {
+            const { data } = await axios.get(`/api/products/${productId}`)
+            setProduct(data.product)
+        } catch (error) {
+            // Fallback to redux if API fails or for speed
+            const product = products.find((product) => product.id === productId);
+            setProduct(product);
+        }
     }
 
     useEffect(() => {
-        if (products.length > 0) {
-            fetchProduct()
-        }
+        fetchProduct()
         scrollTo(0, 0)
-    }, [productId,products]);
+    }, [productId, products]);
 
     return (
         <div className="mx-6">
@@ -37,6 +43,14 @@ export default function Product() {
 
                 {/* Description & Reviews */}
                 {product && (<ProductDescription product={product} />)}
+
+                {/* Recommendations */}
+                {product && (
+                    <RecommendationCarousel
+                        productId={product.id}
+                        category={product.category}
+                    />
+                )}
             </div>
         </div>
     );

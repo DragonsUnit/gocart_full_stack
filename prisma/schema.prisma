@@ -14,8 +14,9 @@ model User {
     id    String @id
     name  String
     email String
-    image String
-    cart  Json   @default("{}")
+    image         String
+    cart          Json   @default("{}")
+    loyaltyPoints Int    @default(0)
 
     // Relations
     ratings     Rating[]
@@ -33,6 +34,7 @@ model Product {
     price       Float
     images      String[]
     category    String
+    stock       Int      @default(10)
     inStock     Boolean  @default(true)
     storeId     String
     createdAt   DateTime @default(now())
